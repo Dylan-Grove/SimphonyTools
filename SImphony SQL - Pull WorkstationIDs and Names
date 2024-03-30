@@ -1,0 +1,63 @@
+$username = ""
+$password = ""
+$propertyNumber = $env:COMPUTERNAME.Substring(1, 2)
+
+# Run the SQL query and convert objectnumber to Int32
+$query = @"
+select objectnumber, workstationid from workstation
+go
+exit
+"@
+$query > C:\windows\temp\sqlcmdquery.sql
+$workstationIds = sqlcmd -S localhost\SQLEXPRESS -i C:\windows\temp\sqlcmdquery.sql -d DataStore -U $username -P $password |
+    ForEach-Object {
+        # Skip lines that are headers, footers, or not in the expected format
+        if ($_ -match '^\s*(\d+)\s+(\d+)\s*$') {
+            [int]$objectNumber = $matches[1]
+            [int]$workstationId = $matches[2]
+            
+            # Calculate workstation name based on object number
+            $workstationNames = switch ($objectNumber) {
+                { $_ -lt 10 } {
+                    "P${propertyNumber}WS0$objectNumber"
+                    continue
+                }
+                50 {
+                    "P${propertyNumber}CAPS"
+                    continue
+                }
+                51 {
+                    "P${propertyNumber}KDS"
+                    continue
+                }
+                52 {
+                    "P${propertyNumber}STS"
+                    continue
+                }
+                default {
+                    $wsName = @()
+                    if ($_ -ge 10 -and $_ -lt 50) {
+                        $wsNumber = if ($_ -lt 20) {"0$($_ - 10)"} else {"$($_ - 10)"}
+                        $wsName += "P${propertyNumber}TB$wsNumber"
+                    }
+                    if ($_ -gt 50) {
+                        $wsName += "P${propertyNumber}WS0$objectNumber"
+                        $wsName += "P${propertyNumber}TB$($_ - 10)"
+                    }
+                    $wsName
+                }
+            }
+
+            # Create PSCustomObject for each workstation name
+            foreach ($wsName in $workstationNames) {
+                [PSCustomObject]@{
+                    objectNumber    = $objectNumber
+                    workstationId   = $workstationId
+                    workstationName = $wsName
+                }
+            }
+        }
+    }
+
+# Sort by objectnumber
+$workstationIds | Sort-Object objectNumber
