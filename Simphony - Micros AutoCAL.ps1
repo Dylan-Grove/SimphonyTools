@@ -1,43 +1,24 @@
-# Define variables for registry values
-$SHIDSilent = "43812"
-$DeviceId = "P34TB19"
-$ProductType = "38951"
+# Define device specific variables
 $ServiceHostId = "43812"
-$WSIdDecimal = 38919
+$DeviceName = "P34TB19"
+$WorkstationId = "38951"
 
-# Convert WSId to DWORD hexadecimal
-$WSId = "0x" + $WSIdDecimal.ToString("X8")
 
-# Define registry path
+# Define registry path and keys
 $regPath = "HKLM:\SOFTWARE\WOW6432Node\Micros"
-
-# Check if Micros key exists, if not create it
-if (-not (Test-Path $regPath)) {
-    New-Item -Path $regPath -ItemType Directory | Out-Null
-}
-
-# Define registry key values
 $regValues = @{
-    "CALVersion" = "3.1.4.144"
     "HwConfigured" = 1
-    "SHIDSilent" = $SHIDSilent
+    "SHIDSilent" = $ServiceHostId
     "TimeSet" = 1
 }
-
-# Set registry key values
-foreach ($entry in $regValues.GetEnumerator()) {
-    Set-ItemProperty -Path $regPath -Name $entry.Key -Value $entry.Value -ErrorAction SilentlyContinue
-}
-
-# Define subkeys and their values
 $subKeys = @{
     "Config" = @{
-        "DeviceId" = $DeviceId
+        "DeviceId" = $DeviceName
         "PersistentStore" = "C:\Windows\SysWOW64"
         "ActiveHost" = "mtu01-ohsim-prod.hospitality."
         "ActiveHostIpAddress" = "https://mtu01-ohsim-prod.hospitality.oracleindustry.com:443/EGateway/EGateway.asmx"
         "AutoStartApp" = ""
-        "ProductType" = $ProductType
+        "ProductType" = $WorkstationId
         "ServiceHostId" = $ServiceHostId
         "POSType" = 102
         "HostPort" = 7300
@@ -49,14 +30,18 @@ $subKeys = @{
         "CALEnabled" = 1
         "POSFlags" = 2
         "AutoStartAppOld" = ""
-        "WSId" = $WSId
+        "WSId" = $WorkstationId
     }
-    "Scripts\McrsCAL" = @{
-        "Version" = 03010490
-    }
-    "Scripts\McrsHAL" = @{
-        "Version" = 03010490
-    }
+}
+
+# Check if Micros key exists, if not create it
+if (-not (Test-Path $regPath)) {
+    New-Item -Path $regPath -ItemType Directory | Out-Null
+}
+
+# Set registry key values
+foreach ($entry in $regValues.GetEnumerator()) {
+    Set-ItemProperty -Path $regPath -Name $entry.Key -Value $entry.Value -ErrorAction SilentlyContinue
 }
 
 # Set subkeys and their values
@@ -72,5 +57,4 @@ foreach ($subKey in $subKeys.GetEnumerator()) {
         Set-ItemProperty -Path $subKeyPath -Name $entry.Key -Value $entry.Value -ErrorAction SilentlyContinue
     }
 }
-
-Write-Host "Registry keys and values have been created or updated."
+Set-ItemProperty -Path HKLM:\SOFTWARE\WOW6432Node\Micros\Config -name "WSId" -value 38951
